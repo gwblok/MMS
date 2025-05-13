@@ -40,6 +40,7 @@ iex (irm hp.garytown.com)
 Invoke-MMSDemo2025
 
 # Videos are in the Video folder.
+# Videos over 50GB were compressed using: www.veed.io
 ```
 --------------------------------------------
 
