@@ -15,28 +15,35 @@
   https://github.com/gwblok/garytown/blob/master/Intune/Install-PowerShellMSI.ps1
 #>
 
-<# Created with Prompt
+<# Created with Prompts
 
+1st Prompt:
 Create a script that will install the latest versions of
 
-Git
-GitHub CLI
-Copilot CLI
-Visual Studio Code
-PowerShell 7
-Using MSI files
+    Git
+    GitHub CLI
+    Copilot CLI
+    Visual Studio Code
+    PowerShell 7
+    Using MSI files
 
 
-GitHub CLI info:
-https://github.com/cli/cli/releases/
-Copilot Release:
-https://github.com/github/copilot-cli/releases
+    GitHub CLI info:
+    https://github.com/cli/cli/releases/
+    Copilot Release:
+    https://github.com/github/copilot-cli/releases
 
-Scripts that might help:
-https://github.com/gwblok/garytown/blob/master/Intune/Install-Git.ps1
-https://github.com/gwblok/garytown/blob/master/Intune/Install-VSCode.ps1
-https://github.com/gwblok/garytown/blob/master/Intune/Install-PowerShellMSI.ps1
+    Scripts that might help:
+    https://github.com/gwblok/garytown/blob/master/Intune/Install-Git.ps1
+    https://github.com/gwblok/garytown/blob/master/Intune/Install-VSCode.ps1
+    https://github.com/gwblok/garytown/blob/master/Intune/Install-PowerShellMSI.ps1
 
+2nd Prompt:
+    What went wrong there? Can you fix it?
+    (Attached Screen Capture of the error)
+
+3rd Prompt:
+    It says it is installing 2.53.0.0 BUT it actually installed 2.53.0.2, so you're getting the wrong version from somewhere and it re-installs GIT each time. Can you fix that?
 #>
 
 #Requires -RunAsAdministrator
