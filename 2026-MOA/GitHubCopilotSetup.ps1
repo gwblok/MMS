@@ -178,19 +178,14 @@ Write-Host "============================================" -ForegroundColor Cyan
 $AppCurrentInstall = Get-InstalledApps | Where-Object { $_.DisplayName -like "Microsoft Visual Studio Code*" }
 [version]$AppCurrentInstallVersion = if ($AppCurrentInstall) { $AppCurrentInstall.DisplayVersion } else { '0.0.0.1' }
 
-# Get latest version from redirect URL
+# Get latest version from the VS Code update API
 $baseUrl = "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64"
 try {
-    $response = Invoke-WebRequest -Uri $baseUrl -MaximumRedirection 0 -ErrorAction Stop
-    $redirectUrl = $response.Headers.Location
+    $updateInfo = Invoke-RestMethod -Uri "https://update.code.visualstudio.com/api/update/win32-x64/stable/latest" -Method Get
+    [version]$NewRelease = $updateInfo.productVersion
 }
 catch {
-    $redirectUrl = $_.Exception.Response.Headers.Location.ToString()
-}
-if ($redirectUrl -match "/(\d+\.\d+\.\d+)/") {
-    [version]$NewRelease = $matches[1]
-}
-else {
+    Write-Host "Could not determine latest VS Code version, will attempt install." -ForegroundColor Yellow
     [version]$NewRelease = '999.0.0'
 }
 
