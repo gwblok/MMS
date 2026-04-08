@@ -83,8 +83,11 @@ $AppCurrentInstall = Get-InstalledApps | Where-Object { $_.DisplayName -eq "git"
 $apiUrl = "https://api.github.com/repos/git-for-windows/git/releases/latest"
 $release = Invoke-RestMethod -Uri $apiUrl -Method Get
 $version = $release.tag_name
-[version]$NewRelease = ($version.Replace("v", "").split(".") | Select-Object -First 3) -join "."
-$NewRelease = [version]::new($NewRelease.Major, $NewRelease.Minor, $(if ($NewRelease.Build -eq -1) { 0 } else { $NewRelease.Build }), $(if ($NewRelease.Revision -eq -1) { 0 } else { $NewRelease.Revision }))
+# Git tags are like v2.53.0.windows.2 — extract major.minor.patch and the revision after .windows.
+$versionClean = $version -replace '^v', ''
+$mainVersion = ($versionClean.split(".") | Select-Object -First 3) -join "."
+$windowsRevision = if ($versionClean -match '\.windows\.(\d+)') { [int]$matches[1] } else { 0 }
+[version]$NewRelease = [version]::new(([version]$mainVersion).Major, ([version]$mainVersion).Minor, ([version]$mainVersion).Build, $windowsRevision)
 $downloadUrl = ($release.assets | Where-Object { $_.name -like "*64-bit.exe" }).browser_download_url
 $packageName = ($release.assets | Where-Object { $_.name -like "*64-bit.exe" }).name
 
