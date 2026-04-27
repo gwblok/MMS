@@ -69,7 +69,7 @@ param(
 )
 
 # Update this value whenever the script is modified.
-$ScriptVersionTimestamp = '2026.04.27-10.36'
+$ScriptVersionTimestamp = '2026.04.27-12.25'
 Write-Output "Script Version: $ScriptVersionTimestamp"
 
 function Test-IsAdministrator {
@@ -361,10 +361,138 @@ function Get-LenovoXmlFile {
 		[string]$Url
 	)
 
-	$response = Invoke-WebRequest -Uri $Url -UseBasicParsing -ErrorAction Stop
-	$xml = New-Object System.Xml.XmlDocument
-	$xml.LoadXml($response.Content)
-	return $xml
+	$xmlFile = $null
+	$stop = $false
+	$retryCount = 0
+	$status = $null
+
+	do {
+		try {
+			[System.Xml.XmlDocument]$xmlFile = (New-Object System.Net.WebClient).DownloadString($Url)
+			$stop = $true
+		}
+		catch {
+			if ($retryCount -gt 3) {
+				$stop = $true
+				$status = $_
+			}
+			else {
+				$retryCount = $retryCount + 1
+			}
+		}
+	}
+	while (-not $stop)
+
+	if ($null -eq $xmlFile) {
+		switch -Wildcard ($status) {
+			'*400*' { throw "$($Url): Bad Request (400)" }
+			'*401*' { throw "$($Url): Unauthorized (401)" }
+			'*403*' { throw "$($Url): Forbidden (403)" }
+			'*404*' { throw "$($Url): Not Found (404)" }
+			'*407*' { throw "$($Url): Proxy Authentication Required (407)" }
+			'*408*' { throw "$($Url): Request Timeout (408)" }
+			'*500*' { throw "$($Url): Internal Server Error (500)" }
+			'*501*' { throw "$($Url): Not Implemented (501)" }
+			'*502*' { throw "$($Url): Bad Gateway (502)" }
+			'*503*' { throw "$($Url): Service Unavailable (503)" }
+			'*504*' { throw "$($Url): Gateway Timeout (504)" }
+			default { throw "$($Url): Unknown exception `n$status" }
+		}
+	}
+
+	return $xmlFile
+}
+
+function Get-LenovoDatCatalog {
+	return Get-LenovoXmlFile -Url 'https://download.lenovo.com/cdrt/td/catalogv2.xml'
+}
+
+function Get-LenovoCatalogBiosDetails {
+	param(
+		[Parameter(Mandatory = $true)]
+		[pscustomobject]$ComputerDetails
+	)
+
+	$machineType = Get-LenovoMachineTypeStandalone -ComputerDetails $ComputerDetails
+	$catalog = Get-LenovoDatCatalog
+	$node = $catalog.ModelList.Model | Where-Object { $_.Types.Type.Contains($machineType.ToUpper().Trim()) } | Select-Object -First 1
+
+	if (-not $node) {
+		throw "No Lenovo BIOS DAT catalog entry was found for machine type $machineType"
+	}
+
+	$catalogUrls = @(
+		"https://download.lenovo.com/catalog/${machineType}_Win11.xml",
+		"https://download.lenovo.com/catalog/${machineType}_Win10.xml"
+	)
+
+	$catalogXml = $null
+	foreach ($catalogUrl in $catalogUrls) {
+		try {
+			$catalogXml = Get-LenovoXmlFile -Url $catalogUrl
+			if ($catalogXml) {
+				break
+			}
+		}
+		catch {
+			continue
+		}
+	}
+
+	if (-not $catalogXml) {
+		throw "No Lenovo BIOS catalog entries were found for machine type $machineType"
+	}
+
+	$packageUrls = @($catalogXml.packages.ChildNodes | Where-Object { $_.category -match 'BIOS UEFI' } | ForEach-Object { $_.location })
+	if ($packageUrls.Count -eq 0) {
+		throw "No Lenovo BIOS package entries were found for machine type $machineType"
+	}
+
+	$highestVersion = $null
+	$highestReleaseDate = $null
+	$highestUpdateUrl = $null
+	$highestReadmeUrl = $null
+
+	foreach ($packageUrl in $packageUrls) {
+		try {
+			$packageXml = Get-LenovoXmlFile -Url $packageUrl
+			$baseUrl = $packageUrl.Substring(0, $packageUrl.LastIndexOf('/') + 1)
+			$packageVersion = [string]$packageXml.Package.version
+			$updateUrl = $baseUrl + $packageXml.Package.Files.Installer.File.Name
+			$readmeUrl = if ($packageXml.Package.Files.ReadMe.File.Name) { $baseUrl + $packageXml.Package.Files.ReadMe.File.Name } else { $null }
+			$releaseDate = [string]$packageXml.Package.ReleaseDate
+
+			if ($ComputerDetails.ProductVersion -like 'ThinkCentre*' -or $ComputerDetails.ProductVersion -like 'ThinkStation*') {
+				$packageVersionHex = '0x' + $packageVersion.Substring(5, 2)
+				$packageVersion = '1.' + [Convert]::ToInt32($packageVersionHex, 16)
+			}
+
+			$packageComparable = ConvertTo-ComparableVersion -VersionString $packageVersion
+			$highestComparable = ConvertTo-ComparableVersion -VersionString $highestVersion
+			if (($null -eq $highestVersion) -or ($packageComparable -and $highestComparable -and $packageComparable -gt $highestComparable) -or ($packageComparable -and -not $highestComparable)) {
+				$highestVersion = $packageVersion
+				$highestReleaseDate = $releaseDate
+				$highestUpdateUrl = $updateUrl
+				$highestReadmeUrl = $readmeUrl
+			}
+		}
+		catch {
+			continue
+		}
+	}
+
+	if (-not $highestVersion) {
+		throw 'No Lenovo BIOS version could be parsed from the Lenovo catalog'
+	}
+
+	[PSCustomObject]@{
+		MachineType       = $machineType
+		ImageCode         = [string]$node.BIOS.image
+		AvailableVersion  = $highestVersion
+		ReleaseDate       = $highestReleaseDate
+		UpdateUrl         = $highestUpdateUrl
+		ReadmeUrl         = $highestReadmeUrl
+	}
 }
 
 function Get-LenovoLatestBiosInfo {
@@ -373,88 +501,21 @@ function Get-LenovoLatestBiosInfo {
 		[pscustomobject]$ComputerDetails
 	)
 
-	$machineType = Get-LenovoMachineTypeStandalone -ComputerDetails $ComputerDetails
 	$currentVersion = Get-LenovoCurrentBiosVersionStandalone -ComputerDetails $ComputerDetails
-	$catalogUrls = @(
-		"https://download.lenovo.com/catalog/${machineType}_win11.xml",
-		"https://download.lenovo.com/catalog/${machineType}_win10.xml"
-	)
-
-	$packageUrls = @()
-	foreach ($catalogUrl in $catalogUrls) {
-		try {
-			$catalogXml = Get-LenovoXmlFile -Url $catalogUrl
-			$urls = $catalogXml.packages.ChildNodes | Where-Object { $_.category -match 'BIOS UEFI' } | ForEach-Object { $_.location }
-			if ($urls) {
-				$packageUrls += $urls
-			}
-		}
-		catch {
-		}
-	}
-
-	if (-not $packageUrls) {
-		throw "No Lenovo BIOS catalog entries were found for machine type $machineType"
-	}
-
-	$highestVersion = $null
-	$highestReleaseDate = $null
-
-	foreach ($url in $packageUrls) {
-		try {
-			$packageXml = Get-LenovoXmlFile -Url $url
-			$packageTitle = $packageXml.Package.Title.Desc.InnerText
-			if ($packageTitle.StartsWith('System Firmware', [System.StringComparison]::OrdinalIgnoreCase)) {
-				$baseUrl = $url.Substring(0, $url.LastIndexOf('/') + 1)
-				$readmeUrl = $baseUrl + $packageXml.Package.Files.ReadMe.File.Name
-				$readme = (New-Object System.Net.WebClient).DownloadString($readmeUrl)
-				$match = [regex]::Match($readme, '(\d+\.\d+)&nbsp;&nbsp;\(UEFI BIOS\)')
-				if ($match.Success) {
-					$packageVersion = $match.Groups[1].Value
-				}
-				else {
-					continue
-				}
-			}
-			else {
-				$packageVersion = [string]$packageXml.Package.version
-			}
-
-			$releaseDate = [string]$packageXml.Package.ReleaseDate
-
-			if (($packageXml.Package.Files.Installer.File.Name) -like '*jy*') {
-				$packageVersionHex = '0x' + $packageVersion.Substring(5, 2)
-				$packageVersion = '1.' + [Convert]::ToInt32($packageVersionHex, 16)
-			}
-			else {
-				$packageVersion = $packageVersion.Substring(0, 4)
-			}
-
-			if (($null -eq $highestVersion) -or ((ConvertTo-ComparableVersion -VersionString $packageVersion) -gt (ConvertTo-ComparableVersion -VersionString $highestVersion))) {
-				$highestVersion = $packageVersion
-				$highestReleaseDate = $releaseDate
-			}
-		}
-		catch {
-		}
-	}
-
-	if (-not $highestVersion) {
-		throw 'No Lenovo BIOS version could be parsed from the Lenovo catalog'
-	}
+	$biosDetails = Get-LenovoCatalogBiosDetails -ComputerDetails $ComputerDetails
 
 	$currentComparable = ConvertTo-ComparableVersion -VersionString $currentVersion
-	$latestComparable = ConvertTo-ComparableVersion -VersionString $highestVersion
+	$latestComparable = ConvertTo-ComparableVersion -VersionString $biosDetails.AvailableVersion
 	$isCurrent = $false
 
 	if ($currentComparable -and $latestComparable) {
 		$isCurrent = $currentComparable -ge $latestComparable
 	}
 	else {
-		$isCurrent = ($currentVersion -eq $highestVersion)
+		$isCurrent = ($currentVersion -eq $biosDetails.AvailableVersion)
 	}
 
-	return (Get-ResultObject -Manufacturer 'Lenovo' -Model $ComputerDetails.Model -CurrentBiosVersion $currentVersion -LatestBiosVersion $highestVersion -CurrentBiosDate ([string]$ComputerDetails.ReleaseDate) -LatestBiosDate $highestReleaseDate -IsCurrent $isCurrent -Source 'Lenovo Catalog')
+	return (Get-ResultObject -Manufacturer 'Lenovo' -Model $ComputerDetails.Model -CurrentBiosVersion $currentVersion -LatestBiosVersion $biosDetails.AvailableVersion -CurrentBiosDate ([string]$ComputerDetails.ReleaseDate) -LatestBiosDate $biosDetails.ReleaseDate -IsCurrent $isCurrent -Source 'Lenovo Catalog')
 }
 
 function Get-HPPlatformListXml {
