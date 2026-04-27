@@ -576,5 +576,4 @@ try {
 }
 catch {
 	Write-Error $_.Exception.Message
-	exit 1
 }
