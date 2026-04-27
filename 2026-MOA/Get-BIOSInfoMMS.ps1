@@ -109,7 +109,16 @@ function Expand-CabFile {
 }
 
 function Get-TempWorkingPath {
+	$localAppDataTemp = if ($env:LOCALAPPDATA) {
+		Join-Path -Path $env:LOCALAPPDATA -ChildPath 'Temp'
+	}
+	$userProfileTemp = if ($env:USERPROFILE) {
+		Join-Path -Path $env:USERPROFILE -ChildPath 'AppData\Local\Temp'
+	}
+
 	$candidates = @(
+		$localAppDataTemp,
+		$userProfileTemp,
 		$env:TEMP,
 		$env:TMP,
 		([System.IO.Path]::GetTempPath()),
@@ -119,14 +128,20 @@ function Get-TempWorkingPath {
 
 	foreach ($base in $candidates) {
 		try {
-			if (-not (Test-Path -Path $base)) {
-				$null = New-Item -Path $base -ItemType Directory -Force -ErrorAction Stop
+			$expandedBase = [Environment]::ExpandEnvironmentVariables($base)
+			if (-not (Test-Path -Path $expandedBase)) {
+				$null = New-Item -Path $expandedBase -ItemType Directory -Force -ErrorAction Stop
 			}
 
-			$path = Join-Path -Path $base -ChildPath 'OEMBiosInfo'
+			$path = Join-Path -Path $expandedBase -ChildPath 'OEMBiosInfo'
 			if (-not (Test-Path -Path $path)) {
 				$null = New-Item -Path $path -ItemType Directory -Force -ErrorAction Stop
 			}
+
+			# Validate effective write access for this user/session.
+			$probeFile = Join-Path -Path $path -ChildPath '.__write_test'
+			$null = New-Item -Path $probeFile -ItemType File -Force -ErrorAction Stop
+			Remove-Item -Path $probeFile -Force -ErrorAction Stop
 
 			if (Test-Path -Path $path) {
 				return $path
