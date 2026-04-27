@@ -68,6 +68,10 @@ param(
 	[switch]$Quiet
 )
 
+# Update this value whenever the script is modified.
+$ScriptVersionTimestamp = '2026.04.27-10.36'
+Write-Output "Script Version: $ScriptVersionTimestamp"
+
 function Test-IsAdministrator {
 	$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 	$principal = New-Object Security.Principal.WindowsPrincipal($identity)
