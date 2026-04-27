@@ -109,11 +109,35 @@ function Expand-CabFile {
 }
 
 function Get-TempWorkingPath {
-	$path = Join-Path -Path $env:TEMP -ChildPath 'OEMBiosInfo'
-	if (-not (Test-Path -Path $path)) {
-		$null = New-Item -Path $path -ItemType Directory -Force
+	$candidates = @(
+		$env:TEMP,
+		$env:TMP,
+		([System.IO.Path]::GetTempPath()),
+		(Join-Path -Path $env:SystemRoot -ChildPath 'Temp'),
+		'C:\Temp'
+	) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+
+	foreach ($base in $candidates) {
+		try {
+			if (-not (Test-Path -Path $base)) {
+				$null = New-Item -Path $base -ItemType Directory -Force -ErrorAction Stop
+			}
+
+			$path = Join-Path -Path $base -ChildPath 'OEMBiosInfo'
+			if (-not (Test-Path -Path $path)) {
+				$null = New-Item -Path $path -ItemType Directory -Force -ErrorAction Stop
+			}
+
+			if (Test-Path -Path $path) {
+				return $path
+			}
+		}
+		catch {
+			continue
+		}
 	}
-	return $path
+
+	throw 'Unable to create a writable temporary working path.'
 }
 
 function Get-ComputerDetails {
