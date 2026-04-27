@@ -1,3 +1,66 @@
+<#
+.SYNOPSIS
+Standalone BIOS compliance check for Dell, HP, and Lenovo devices.
+
+.DESCRIPTION
+This script detects the local OEM, reads the currently installed BIOS version,
+queries the OEM online catalog for the latest BIOS version, compares current vs latest,
+and returns compliance status.
+
+The script is self-contained and does not import or depend on local OEM modules/scripts.
+
+.PARAMETER AsObject
+Returns a full result object with manufacturer, model, current/latest BIOS values,
+dates (when available), source, and compliance boolean.
+
+.PARAMETER Quiet
+Suppresses formatted host output. Useful when only the boolean (or object) return
+value is needed for automation.
+
+.OUTPUTS
+Default:
+- [bool] True when BIOS is current, False when an update is available.
+
+With -AsObject:
+- PSCustomObject with properties:
+	Manufacturer, Model, CurrentBiosVersion, LatestBiosVersion,
+	CurrentBiosDate, LatestBiosDate, IsCurrent, Source
+
+.EXAMPLE
+.\Get-BIOSInfoMMS.ps1
+Displays BIOS comparison details and returns True/False.
+
+.EXAMPLE
+.\Get-BIOSInfoMMS.ps1 -Quiet
+Returns only True/False with no host output.
+
+.EXAMPLE
+.\Get-BIOSInfoMMS.ps1 -AsObject
+Returns full structured output for reporting/JSON export.
+
+.EXAMPLE
+$result = .\Get-BIOSInfoMMS.ps1 -AsObject -Quiet
+if (-not $result.IsCurrent) {
+		Write-Host "BIOS update required for $($result.Model)"
+}
+
+.NOTES
+Requirements:
+- Internet access to OEM catalog endpoints.
+- Windows with CIM/WMI access.
+- Uses built-in tools/cmdlets such as Invoke-WebRequest, expand.exe, and Get-CimInstance.
+
+OEM catalog sources used:
+- Dell CatalogIndexPC / model catalog
+- HP Image Assistant (HPIA) platform/reference catalogs
+- Lenovo machine type catalog XML
+
+Behavior notes:
+- Some OEMs expose versions in different formats than SMBIOS strings.
+- Version normalization/comparison is handled internally where possible.
+- On unexpected catalog/schema/network errors, the script throws and exits with code 1.
+#>
+
 [CmdletBinding()]
 param(
 	[switch]$AsObject,
