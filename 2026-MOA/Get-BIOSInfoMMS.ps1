@@ -49,6 +49,7 @@ Requirements:
 - Internet access to OEM catalog endpoints.
 - Windows with CIM/WMI access.
 - Uses built-in tools/cmdlets such as Invoke-WebRequest, expand.exe, and Get-CimInstance.
+- Run in an elevated PowerShell session (Run as Administrator).
 
 OEM catalog sources used:
 - Dell CatalogIndexPC / model catalog
@@ -66,6 +67,17 @@ param(
 	[switch]$AsObject,
 	[switch]$Quiet
 )
+
+function Test-IsAdministrator {
+	$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+	$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+	return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-IsAdministrator)) {
+	Write-Error 'This script must be run as Administrator. Open PowerShell as Administrator and try again.'
+	exit 1
+}
 
 function Invoke-DownloadFile {
 	param(
