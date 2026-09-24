@@ -67,19 +67,16 @@ function Install-LenovoVantage {
     )
     # Define the URL and temporary file path - https://support.lenovo.com/us/en/solutions/hf003321-lenovo-vantage-for-enterprise
     #$url = "https://download.lenovo.com/pccbbs/thinkvantage_en/metroapps/Vantage/LenovoCommercialVantage_10.2401.29.0.zip"
-    
     #Jan 25 release - seems to be the best working version.
     #$url = "https://download.lenovo.com/pccbbs/thinkvantage_en/metroapps/Vantage/LenovoCommercialVantage_10.2501.15.0_v3.zip"
-    
     #July 2025 Release - having issues, fails to install during OSD
     #$url = 'https://download.lenovo.com/pccbbs/thinkvantage_en/metroapps/Vantage/LenovoCommercialVantage_20.2506.39.0_v17.zip'
     #January 23, 2026 Release
     #$url = 'https://download.lenovo.com/pccbbs/thinkvantage_en/metroapps/Vantage/LenovoCommercialVantage_20.2511.24.0.20251217075118.zip'
-    $urlservice = 'https://filedownload.csw.lenovo.com/enm/vantage30/service/LenovoVantageServiceSetup.exe'
-
     #September 11 2025 Release
     $url = 'https://download.lenovo.com/pccbbs/thinkvantage_en/metroapps/Vantage/LenovoCommercialVantage_20.2606.24.0.20260917014203.zip'
 
+    $urlservice = 'https://filedownload.csw.lenovo.com/enm/vantage30/service/LenovoVantageServiceSetup.exe'
     #$tempFilePath = "C:\Windows\Temp\lenovo_vantage.zip"
     $tempExtractPath = "C:\Windows\Temp\LCV\Extract"
     $tempDownloadPath = "C:\Windows\Temp\LCV\Download"
