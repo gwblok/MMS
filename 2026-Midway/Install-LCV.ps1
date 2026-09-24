@@ -118,12 +118,9 @@ function Install-LenovoVantage {
     
     $installerPath = Join-Path -Path $tempExtractPath -ChildPath 'VantageInstaller.exe'
     Write-Host "Launching $installerPath Install -Vantage"
-    $InstallProcess = Start-Process `
-        -FilePath $installerPath `
-        -ArgumentList 'Install', '-Vantage' `
-        -Wait `
-        -PassThru
-    Write-Host "Vantage installer exited with code $($InstallProcess.ExitCode)"
+    & $installerPath 'Install' '-Vantage'
+    $installerExitCode = $LASTEXITCODE
+    Write-Host "Vantage installer exited with code $installerExitCode"
     
     if (Test-Path -path $ExpandFileService) {
         Write-Host "Starting Install of: $ExpandFileService" -ForegroundColor Green
