@@ -10,7 +10,7 @@ $WarrantyInfoHide = $false
 $MyDevicePageHide = $false
 $WiFiSecurityPageHide = $false
 $HardwareScanPageHide = $false
-$GiveFeedbackPageHide = $false
+$GiveFeedbackPageHide = $true
 $TurnOffMicrophoneSettings = $true
 
 Write-Host "==================================================================="
