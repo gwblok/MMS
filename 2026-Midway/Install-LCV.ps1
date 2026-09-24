@@ -1,3 +1,44 @@
+<#
+.SYNOPSIS
+    Installs and configures Lenovo Commercial Vantage for ConfigMgr.
+
+.DESCRIPTION
+    This script downloads and installs the Lenovo Commercial Vantage enterprise
+    package, the Lenovo Vantage service, and SU Helper. Downloads use BITS first
+    and fall back to Invoke-WebRequest when BITS is unavailable or fails.
+
+    The script then writes the selected Commercial Vantage policy values under:
+    HKLM:\SOFTWARE\Policies\Lenovo\Commercial Vantage
+
+.REQUIREMENTS
+    - Lenovo device running a full Windows installation. WinPE is not supported.
+    - Administrator or ConfigMgr SYSTEM context.
+    - Internet access to the Lenovo download URLs in Install-LenovoVantage.
+    - BITS is preferred but is not required because Invoke-WebRequest is used as fallback.
+
+.USAGE
+    Run from an elevated PowerShell session or deploy as a ConfigMgr package or
+    application running as SYSTEM. Adjust the policy variables below before use:
+    WarrantyInfoHide, MyDevicePageHide, WiFiSecurityPageHide, HardwareScanPageHide,
+    GiveFeedbackPageHide, and TurnOffMicrophoneSettings.
+
+    Commercial Vantage may remove an existing Lenovo Vantage or Lenovo Settings
+    package during installation. The Vantage installer and SU Helper may require
+    time to complete, and a restart may be required by Lenovo components.
+
+.DOCUMENTATION
+    Lenovo Support:
+    https://support.lenovo.com/us/en/solutions/hf003321-lenovo-vantage-for-enterprise
+
+    Lenovo Commercial Vantage CDRT Guide:
+    https://docs.lenovocdrt.com/guides/lcv/
+
+.NOTES
+    The enterprise package includes the Commercial Vantage application, service,
+    add-ins, and optional SU Helper. Review Lenovo's current enterprise package
+    and deployment documentation before updating the download URLs or switches.
+#>
+
 if ($env:SystemDrive -eq "X:"){
     Write-Host "Running in WinPE, this step requires a full Windows environment to run properly."
     exit 0
@@ -127,37 +168,6 @@ function Install-LenovoVantage {
         New-ItemProperty -Path $RegistryPath -Name "AcceptEULAAutomatically" -Value 1 -PropertyType dword -Force | Out-Null
         New-ItemProperty -Path $RegistryPath -Name "wmi.warranty" -Value 1 -PropertyType dword -Force | Out-Null
     }
-
-    <#  - These Scripts are no longer included in the Lenovo Vantage installer
-    #Lenovo Vantage Batch File
-    write-host -ForegroundColor Cyan " Installing Lenovo Vantage...batch file..."
-    $ArgumentList = "/c $($tempExtractPath)\setup-commercial-vantage.bat"
-    $InstallProcess = Start-Process -FilePath "cmd.exe" -ArgumentList $ArgumentList -Wait -PassThru
-    if ($InstallProcess.ExitCode -eq 0) {
-        Write-Host -ForegroundColor Green "Lenovo Vantage completed successfully."
-        $RegistryPath = "HKLM:\SOFTWARE\Policies\Lenovo\Commercial Vantage"
-        New-Item -Path $RegistryPath -ItemType Directory -Force |Out-Null
-        New-ItemProperty -Path $RegistryPath -Name "AcceptEULAAutomatically" -Value 1 -PropertyType dword -Force | Out-Null
-        New-ItemProperty -Path $RegistryPath -Name "wmi.warranty" -Value 1 -PropertyType dword -Force | Out-Null
-    } else {
-        Write-Host -ForegroundColor Red "Lenovo Vantage failed with exit code $($InstallProcess.ExitCode)."
-    }
-    
-    Write-Host "Launching $tempExtractPath\lenovo-commercial-vantage-install.ps1"
-    #Get Current Path
-    $CurrentPath = Get-Location
-    Set-Location -Path $tempExtractPath
-    try {
-        Invoke-Expression -command "$tempExtractPath\lenovo-commercial-vantage-install.ps1"
-    }
-    catch {
-        Write-Host "Had issues with $($_.Exception.Message)"
-    }
-    
-    Set-Location -Path $CurrentPath
-    #>
-
-
 
     if ($IncludeSUHelper){
         $InstallProcess = Start-Process -FilePath $tempExtractPath\SystemUpdate\SUHelperSetup.exe -ArgumentList "/VERYSILENT /NORESTART" -Wait -PassThru
