@@ -1,11 +1,23 @@
+#Connects to TS Environment and Creates (confirms) Registry Stucture in place for the Win10 Upgrade Build.
+try {
+    $tsenv = New-Object -COMObject Microsoft.SMS.TSEnvironment
+    Write-Host "Connected to TS Environment." -ForegroundColor Green
+}
+catch {
+    Write-Host "Not connected to TS Environment." -ForegroundColor yellow
+}
+
 Import-Module OEMWrapPS
 
 # Set this value when the Dell BIOS has an administrator password configured.
-$BIOSPassword = ''
+if ($TSENV) {
+    $BIOSPassword = $tsenv.Value('BIOSPassword')
+}
 
-$UpdateCheck = Get-DellBIOSUpdates -Check
+$UpdateCheck = Get-DellBIOSUpdates -Details
 
-If ($UpdateCheck){
+
+If ($UpdateCheck.BIOSIsCurrent){
     Write-Host "No Dell BIOS update is available." -ForegroundColor Yellow
 
 
@@ -19,8 +31,14 @@ else {
 
     if ([string]::IsNullOrWhiteSpace($BIOSPassword)) {
         Get-DellBIOSUpdates -Flash
+        if ($TSENV) {
+            $tsenv.Value('BIOSRebootRequired') = $true
+        }
     }
     else {
         Get-DellBIOSUpdates -Flash -Password $BIOSPassword
+        if ($TSENV) {
+            $tsenv.Value('BIOSRebootRequired') = $true
+        }
     }
 }

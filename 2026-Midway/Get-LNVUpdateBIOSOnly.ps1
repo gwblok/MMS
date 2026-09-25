@@ -11,6 +11,14 @@
 .NOTES
     Run this script as Administrator. BIOS updates may require a restart.
 #>
+#Connects to TS Environment and Creates (confirms) Registry Stucture in place for the Win10 Upgrade Build.
+try {
+    $tsenv = New-Object -COMObject Microsoft.SMS.TSEnvironment
+    Write-Host "Connected to TS Environment." -ForegroundColor Green
+}
+catch {
+    Write-Host "Not connected to TS Environment." -ForegroundColor yellow
+}
 
 $moduleName = 'Lenovo.Client.Update'
 if (-not (Get-Module -ListAvailable -Name $moduleName)) {
@@ -51,3 +59,7 @@ $biosUpdates | Install-LnvUpdate `
     -SaveBIOSUpdateInfoToRegistry `
     -ExportToWMI `
     -Verbose
+
+if ($Tsenv) {
+    $tsenv.Value('BIOSRebootRequired') = $true
+}
