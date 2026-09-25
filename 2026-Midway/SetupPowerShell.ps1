@@ -11,6 +11,15 @@
     Run elevated when installing the NuGet provider for all users.
 #>
 
+if ($env:SystemDrive -eq 'X:') {
+    $WindowsPhase = 'WinPE'
+}
+else {
+    $WindowsPhase = 'Windows'
+}
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 function Install-Nuget {
     [CmdletBinding()]
     param ()
@@ -75,6 +84,20 @@ function Install-PackageManagement {
             $null = New-Item -Path "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement" -ItemType Directory -ErrorAction SilentlyContinue
             Move-Item -Path "$env:TEMP\1.4.8.1" -Destination "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement\1.4.8.1"
             Import-Module PackageManagement -Force -Scope Global
+        }
+
+        if (-not (Get-Module -Name PowerShellGet -ListAvailable | Where-Object { $_.Version -ge '2.2.5' })) {
+            Write-Host -ForegroundColor Yellow "[-] Install PowerShellGet 2.2.5 directly"
+            $PowerShellGetURL = 'https://psg-prod-eastus.azureedge.net/packages/powershellget.2.2.5.nupkg'
+            $PowerShellGetZip = Join-Path $env:TEMP 'powershellget.2.2.5.zip'
+            $PowerShellGetExtract = Join-Path $env:TEMP 'PowerShellGet-2.2.5'
+            Invoke-WebRequest -UseBasicParsing -Uri $PowerShellGetURL -OutFile $PowerShellGetZip -ErrorAction Stop
+            New-Item -Path $PowerShellGetExtract -ItemType Directory -Force | Out-Null
+            Expand-Archive -Path $PowerShellGetZip -DestinationPath $PowerShellGetExtract -Force
+            $PowerShellGetDestination = Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules\PowerShellGet\2.2.5'
+            New-Item -Path $PowerShellGetDestination -ItemType Directory -Force | Out-Null
+            Copy-Item -Path (Join-Path $PowerShellGetExtract '*') -Destination $PowerShellGetDestination -Recurse -Force
+            Import-Module PowerShellGet -Force -Scope Global -ErrorAction Stop
         }
     }
     else {
