@@ -117,7 +117,9 @@ try {
     }
 
     Import-Module -Name $moduleName -Force -ErrorAction Stop
-    $loadedModule = Get-Module -Name $moduleName -ErrorAction Stop
+    $loadedModule = Get-Module -Name $moduleName -ErrorAction Stop |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
     $setDcuSettings = Get-Command Set-DCUSettings -ErrorAction SilentlyContinue
     if (-not $setDcuSettings) {
         throw 'Set-DCUSettings was not found after importing OEMWrapPS.'
