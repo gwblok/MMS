@@ -78,29 +78,29 @@ function Install-PackageManagement {
         }
     }
     else {
-        $InstalledModule = Get-Module -Name PowerShellGet -ListAvailable | Where-Object {$_.Version -ge '2.2.5'} | Sort-Object Version -Descending | Select-Object -First 1
-        if (-not ($InstalledModule)) {
-            Write-Host -ForegroundColor Yellow "[-] Install-Module PowerShellGet -MinimumVersion 2.2.5"
-            Install-Module -Name PowerShellGet -MinimumVersion 2.2.5 -Repository PSGallery -Force -Scope AllUsers -AllowClobber -Confirm:$false -ErrorAction Stop
-            Import-Module PowerShellGet -Force -Scope Global -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 5
-        }
-        
+        Import-Module PackageManagement -Force -Scope Global -ErrorAction Stop
+        Import-Module PowerShellGet -Force -Scope Global -ErrorAction Stop
+
         $InstalledModule = Get-Module -Name PackageManagement -ListAvailable | Where-Object {$_.Version -ge '1.4.8.1'} | Sort-Object Version -Descending | Select-Object -First 1
         if (-not ($InstalledModule)) {
             Write-Host -ForegroundColor Yellow "[-] Install-Module PackageManagement -MinimumVersion 1.4.8.1"
-            Install-Module -Name PackageManagement -MinimumVersion 1.4.8.1 -Force -Confirm:$false -Source PSGallery -Scope AllUsers -ErrorAction Stop
-            Import-Module PackageManagement -Force -Scope Global -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 5
+            Install-Module -Name PackageManagement -MinimumVersion 1.4.8.1 -Force -Confirm:$false -Source PSGallery -Scope AllUsers -ErrorAction Stop | Out-Null
+            Import-Module PackageManagement -Force -Scope Global -ErrorAction Stop
         }
-        
-        Import-Module PackageManagement -Force -Scope Global -ErrorAction SilentlyContinue
+
         $InstalledModule = Get-Module -Name PackageManagement -ListAvailable | Where-Object {$_.Version -ge '1.4.8.1'} | Sort-Object Version -Descending | Select-Object -First 1
         if ($InstalledModule) {
             Write-Host -ForegroundColor Green "[+] PackageManagement $([string]$InstalledModule.Version)"
         }
-        Import-Module PowerShellGet -Force -Scope Global -ErrorAction SilentlyContinue
+
         $InstalledModule = Get-Module -Name PowerShellGet -ListAvailable | Where-Object {$_.Version -ge '2.2.5'} | Sort-Object Version -Descending | Select-Object -First 1
+        if (-not ($InstalledModule)) {
+            Write-Host -ForegroundColor Yellow "[-] Install-Module PowerShellGet -MinimumVersion 2.2.5"
+            Install-Module -Name PowerShellGet -MinimumVersion 2.2.5 -Repository PSGallery -Force -Scope AllUsers -AllowClobber -Confirm:$false -ErrorAction Stop | Out-Null
+            Import-Module PowerShellGet -Force -Scope Global -ErrorAction Stop
+        }
+
+        Import-Module PowerShellGet -Force -Scope Global -ErrorAction Stop
         if ($InstalledModule) {
             Write-Host -ForegroundColor Green "[+] PowerShellGet $([string]$InstalledModule.Version)"
         }
