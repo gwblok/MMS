@@ -78,10 +78,10 @@ function Install-PackageManagement {
         }
     }
     else {
-        $InstalledModule = Get-PackageProvider -Name PowerShellGet | Where-Object {$_.Version -ge '2.2.5'} | Sort-Object Version -Descending | Select-Object -First 1
+        $InstalledModule = Get-Module -Name PowerShellGet -ListAvailable | Where-Object {$_.Version -ge '2.2.5'} | Sort-Object Version -Descending | Select-Object -First 1
         if (-not ($InstalledModule)) {
-            Write-Host -ForegroundColor Yellow "[-] Install-PackageProvider PowerShellGet -MinimumVersion 2.2.5"
-            Install-PackageProvider -Name PowerShellGet -MinimumVersion 2.2.5 -Force -Scope AllUsers -Confirm:$false -ErrorAction Stop | Out-Null
+            Write-Host -ForegroundColor Yellow "[-] Install-Module PowerShellGet -MinimumVersion 2.2.5"
+            Install-Module -Name PowerShellGet -MinimumVersion 2.2.5 -Repository PSGallery -Force -Scope AllUsers -AllowClobber -Confirm:$false -ErrorAction Stop
             Import-Module PowerShellGet -Force -Scope Global -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 5
         }
@@ -100,7 +100,7 @@ function Install-PackageManagement {
             Write-Host -ForegroundColor Green "[+] PackageManagement $([string]$InstalledModule.Version)"
         }
         Import-Module PowerShellGet -Force -Scope Global -ErrorAction SilentlyContinue
-        $InstalledModule = Get-PackageProvider -Name PowerShellGet | Where-Object {$_.Version -ge '2.2.5'} | Sort-Object Version -Descending | Select-Object -First 1
+        $InstalledModule = Get-Module -Name PowerShellGet -ListAvailable | Where-Object {$_.Version -ge '2.2.5'} | Sort-Object Version -Descending | Select-Object -First 1
         if ($InstalledModule) {
             Write-Host -ForegroundColor Green "[+] PowerShellGet $([string]$InstalledModule.Version)"
         }
