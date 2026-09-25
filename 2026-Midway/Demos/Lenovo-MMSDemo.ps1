@@ -1,6 +1,20 @@
 #Load Lenovo EMPS
 Clear-Host
 
+Write-Host "Lets see what Lenovo has available: Find-Module -Name Lenovo.*" -ForegroundColor Green
+Write-Host "Press any key to continue..." -ForegroundColor Green
+Read-Host
+Find-Module -Name Lenovo.*
+
+Write-Host "Press any key to continue..." -ForegroundColor Green
+Read-Host
+Write-Host "Lets grab the Update Module and run a Scan [Install-Module Lenovo.Client.Update]"
+Install-module -Name Lenovo.Client.Update
+Write-Host "Module Lenovo.Client.Update installed." -ForegroundColor Green
+Write-Host "Lets run a scan with the Update Module (Get-LnvUpdate)" -ForegroundColor Green
+Get-LnvUpdate
+Write-Host "Press any key to continue..." -ForegroundColor Green
+Read-Host
 Write-Host "Loading Lenovo EMPS module..." -ForegroundColor Green
 Write-Host 'iex (irm lenovo.garytown.com)' -ForegroundColor Cyan
 
