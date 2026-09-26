@@ -1,3 +1,41 @@
+<#
+.SYNOPSIS
+    Checks for and installs the latest applicable HP BIOS update.
+
+.DESCRIPTION
+    Uses HP Client Management PowerShell modules to compare the installed BIOS
+    version with the latest available version, download the BIOS payload to a
+    staging directory, and apply it with Update-HPFirmware when an update is
+    available. Reports status in the Configuration Manager Task Sequence
+    progress UI and writes CMTrace-formatted entries to HPBiosUpdate.log.
+
+.PARAMETER BIOSPassword
+    BIOS setup password supplied to Update-HPFirmware when a BIOS password is
+    set. The script currently defaults this parameter to "P@ssw0rd"; provide
+    the correct environment-specific password when that is not the device's
+    configured password.
+
+.NOTES
+    Intended to run elevated in a Configuration Manager Task Sequence. The
+    script reads and writes Task Sequence variables and uses the Task Sequence
+    progress UI; running it outside a Task Sequence is not supported by its
+    current implementation.
+
+    The HP module family used by the script must already be installed and
+    available to the running PowerShell session. It attempts to import
+    HP.Firmware, HP.ClientManagement, HP.Repo, HP.Sinks, HP.Softpaq,
+    HP.Softpaq.Shared, and HP.Warranty. Install those prerequisites before
+    running this script.
+
+    The BIOS payload is staged under %TEMP%\HPStaging. Review HPBiosUpdate.log
+    in the Task Sequence log directory (or the temporary directory when no
+    Task Sequence log path is available) when troubleshooting.
+
+    BIOS firmware installation can require a restart. Ensure the Task Sequence
+    handles the resulting reboot requirement appropriately.
+#>
+
+
 [CmdletBinding()]
     Param (
 		    [Parameter(Mandatory=$false)][string]
