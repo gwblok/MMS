@@ -7,7 +7,7 @@
     the matching module from PSGallery for all users, and imports it.
 
     Panasonic - PanasonicCommandUpdate
-    HP        - HPCMSL
+    HP        - HPCMSL and OEMWrapPS
     Lenovo    - Lenovo.Client.Update
     Dell      - OEMWrapPS
 
@@ -18,15 +18,15 @@
 $ErrorActionPreference = 'Stop'
 
 $manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
-$moduleName = switch -Regex ($manufacturer) {
-    'Panasonic' { 'PanasonicCommandUpdate'; break }
-    'HP|Hewlett-Packard' { 'HPCMSL'; break }
-    'Lenovo' { 'Lenovo.Client.Update'; break }
-    'Dell' { 'OEMWrapPS'; break }
-    default { $null }
+$moduleNames = switch -Regex ($manufacturer) {
+    'Panasonic' { @('PanasonicCommandUpdate'); break }
+    'HP|Hewlett-Packard' { @('HPCMSL', 'OEMWrapPS'); break }
+    'Lenovo' { @('Lenovo.Client.Update'); break }
+    'Dell' { @('OEMWrapPS'); break }
+    default { @() }
 }
 
-if (-not $moduleName) {
+if ($moduleNames.Count -eq 0) {
     throw "Unsupported computer manufacturer: $manufacturer"
 }
 
@@ -62,42 +62,45 @@ try {
 
     Import-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -ErrorAction Stop | Out-Null
 
-    $installedModule = Get-Module -ListAvailable -Name $moduleName |
-        Sort-Object Version -Descending |
-        Select-Object -First 1
+    foreach ($moduleName in $moduleNames) {
+        $installedModule = Get-Module -ListAvailable -Name $moduleName |
+            Sort-Object Version -Descending |
+            Select-Object -First 1
 
-    if (-not $installedModule) {
-        Write-Host "Installing $moduleName for $manufacturer..." -ForegroundColor Cyan
-        $installParameters = @{
-            Name = $moduleName
-            Repository = 'PSGallery'
-            Scope = 'AllUsers'
-            Force = $true
-            AllowClobber = $true
-            Confirm = $false
-            ErrorAction = 'Stop'
+        if (-not $installedModule) {
+            Write-Host "Installing $moduleName for $manufacturer..." -ForegroundColor Cyan
+            $installParameters = @{
+                Name = $moduleName
+                Repository = 'PSGallery'
+                Scope = 'AllUsers'
+                Force = $true
+                AllowClobber = $true
+                Confirm = $false
+                ErrorAction = 'Stop'
+            }
+
+            if ($moduleName -eq 'HPCMSL') {
+                $installParameters.AcceptLicense = $true
+            }
+
+            Install-Module @installParameters
+        }
+        else {
+            Write-Host "$moduleName $($installedModule.Version) is already installed." -ForegroundColor Green
         }
 
-        if ($moduleName -eq 'HPCMSL') {
-            $installParameters.AcceptLicense = $true
+        Import-Module -Name $moduleName -Force -ErrorAction Stop
+        $loadedModule = Get-Module -Name $moduleName
+        if (-not $loadedModule) {
+            throw "$moduleName was installed but could not be imported."
         }
 
-        Install-Module @installParameters
-    }
-    else {
-        Write-Host "$moduleName $($installedModule.Version) is already installed." -ForegroundColor Green
+        Write-Host "$moduleName $($loadedModule.Version) loaded successfully for $manufacturer." -ForegroundColor Green
     }
 
-    Import-Module -Name $moduleName -Force -ErrorAction Stop
-    $loadedModule = Get-Module -Name $moduleName
-    if (-not $loadedModule) {
-        throw "$moduleName was installed but could not be imported."
-    }
-
-    Write-Host "$moduleName $($loadedModule.Version) loaded successfully for $manufacturer." -ForegroundColor Green
     exit 0
 }
 catch {
-    Write-Error "Failed to install or load $moduleName for $manufacturer. $($_.Exception.Message)"
+    Write-Error "Failed to install or load required module(s) for $manufacturer. $($_.Exception.Message)"
     #exit 1
 }

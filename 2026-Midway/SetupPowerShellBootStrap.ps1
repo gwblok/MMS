@@ -1,3 +1,25 @@
+<#
+.SYNOPSIS
+    Bootstraps Windows PowerShell package-management modules for deployment.
+
+.DESCRIPTION
+    Downloads PackageManagement 1.4.8.1 and PowerShellGet 2.2.5 when needed,
+    expands them from C:\Windows\Temp into the all-users Windows PowerShell
+    module directory, imports them, and ensures PSGallery is registered and
+    trusted for the current account.
+
+.NOTES
+    Run elevated or as ConfigMgr SYSTEM. The package downloader accepts any
+    server certificate for its individual requests, so package authenticity is
+    not verified by TLS certificate validation.
+
+    Before installing, this script recursively deletes the contents of the
+    all-users PowerShellGet and PackageManagement module directories. This can
+    remove existing versions and should only be run when that cleanup is wanted.
+
+    Windows PowerShell 5.1 and access to the PowerShell Gallery are required.
+#>
+
 function Save-BootstrapPackage {
     [CmdletBinding()]
     param (
@@ -93,6 +115,7 @@ function Install-PowerShellGet {
 
 
 
+# Clear existing module contents before reinstalling the bootstrap versions above.
 Remove-Item "$env:ProgramFiles\WindowsPowerShell\Modules\PowerShellGet\*" -Recurse
 Remove-Item "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement\*" -Recurse
 

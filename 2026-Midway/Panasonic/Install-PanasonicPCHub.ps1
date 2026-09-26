@@ -11,10 +11,27 @@
 	Run as Administrator or ConfigMgr SYSTEM.
 #>
 
+param (
+	[string]$LogPath = (Join-Path $env:ProgramData 'Panasonic\PCHub\Install-PanasonicPCHub.log')
+)
+
 $ErrorActionPreference = 'Stop'
 $PCHubPageUrl = 'https://global-pc-support.connect.panasonic.com/driver/deployment-support-tools'
 $FallbackUrl = 'https://dl-pc-support.connect.panasonic.com/public/soft_first/store_app/mei-ppchubinstaller-4.11.1100.300-w10w11-nologo-Multi-d20264547.exe'
 $DownloadPath = Join-Path $env:ProgramData 'Panasonic\PCHub'
+
+function Write-PCHubLog {
+	param (
+		[Parameter(Mandatory)]
+		[string]$Message,
+		[ValidateSet('INFO', 'WARN', 'ERROR')]
+		[string]$Level = 'INFO'
+	)
+
+	$logEntry = '{0} [{1}] {2}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff'), $Level, $Message
+	Add-Content -LiteralPath $LogPath -Value $logEntry -Encoding UTF8
+	Write-Host $logEntry
+}
 
 function Get-LatestPanasonicPCHubInstaller {
 	param (
@@ -65,15 +82,21 @@ function Get-PanasonicPCHubInstalled {
 }
 
 try {
+	$logDirectory = Split-Path -Path $LogPath -Parent
+	if ($logDirectory) {
+		New-Item -Path $logDirectory -ItemType Directory -Force | Out-Null
+	}
+	Write-PCHubLog -Message "Starting Panasonic PC Hub installation. Log: $LogPath"
+
 	$installedHub = Get-PanasonicPCHubInstalled
 	if ($installedHub) {
-		Write-Host "Panasonic PCHub is already installed: $($installedHub.DisplayVersion)" -ForegroundColor Green
+		Write-PCHubLog -Message "Panasonic PCHub is already installed: $($installedHub.DisplayVersion)"
 		exit 0
 	}
 
 	$installer = Get-LatestPanasonicPCHubInstaller -PageUrl $PCHubPageUrl -FallbackUrl $FallbackUrl
-	Write-Host "Selected Panasonic PCHub version: $($installer.Version)" -ForegroundColor Cyan
-	Write-Host "Installer URL: $($installer.Url)" -ForegroundColor Cyan
+	Write-PCHubLog -Message "Selected Panasonic PCHub version: $($installer.Version)"
+	Write-PCHubLog -Message "Installer URL: $($installer.Url)"
 
 	New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null
 	$installerPath = Join-Path $DownloadPath ([System.IO.Path]::GetFileName(([uri]$installer.Url).AbsolutePath))
@@ -90,20 +113,31 @@ try {
 		throw "PCHub installer was not downloaded to $installerPath."
 	}
 
-	Write-Host "Installing Panasonic PCHub from $installerPath" -ForegroundColor Cyan
+	Write-PCHubLog -Message "Installing Panasonic PCHub from $installerPath"
 	$process = Start-Process -FilePath $installerPath -ArgumentList '-silent' -Wait -PassThru -NoNewWindow
-	Write-Host "PCHub installer exit code: $($process.ExitCode)"
+	Write-PCHubLog -Message "PCHub installer exit code: $($process.ExitCode)"
 
 	$stagedSetup = Get-ChildItem -Path 'C:\util2' -Filter 'Setup.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 	$RebootRequired = $false
 	if ($stagedSetup) {
-		Write-Host "Running staged PCHub setup: $($stagedSetup.FullName)" -ForegroundColor Cyan
-		$setupProcess = Start-Process -FilePath $stagedSetup.FullName -ArgumentList '-s' -Wait -PassThru -NoNewWindow
-		Write-Host "Staged PCHub setup exit code: $($setupProcess.ExitCode)"
+		$setupResponseFile = Join-Path $stagedSetup.DirectoryName 'setup.iss'
+		$setupLogPath = Join-Path $DownloadPath 'PanasonicPCHub-Setup.log'
+		if (-not (Test-Path -LiteralPath $setupResponseFile)) {
+			throw "InstallShield response file was not found: $setupResponseFile. Silent setup requires setup.iss; see the Panasonic IT Admin Manual."
+		}
+
+		$setupArguments = '-s -f1"{0}" -f2"{1}"' -f $setupResponseFile, $setupLogPath
+		Write-PCHubLog -Message "Running staged PCHub setup: $($stagedSetup.FullName) $setupArguments"
+		Write-PCHubLog -Message "InstallShield log: $setupLogPath"
+		$setupProcess = Start-Process -FilePath $stagedSetup.FullName -ArgumentList $setupArguments -WorkingDirectory $stagedSetup.DirectoryName -Wait -PassThru -NoNewWindow
+		Write-PCHubLog -Message "Staged PCHub setup exit code: $($setupProcess.ExitCode)"
 		if ($setupProcess.ExitCode -notin @(0, 3010)) {
-			throw "Staged PCHub setup failed with exit code $($setupProcess.ExitCode)."
+			throw "Staged PCHub setup failed with exit code $($setupProcess.ExitCode). InstallShield log: $setupLogPath"
 		}
 		$RebootRequired = $setupProcess.ExitCode -eq 3010
+	}
+	else {
+		throw 'Staged Panasonic PCHub Setup.exe was not found under C:\util2.'
 	}
 
 	$installedHub = Get-PanasonicPCHubInstalled
@@ -111,12 +145,24 @@ try {
 		throw "PCHub installation did not register successfully. Bootstrap exit code: $($process.ExitCode)."
 	}
 
-	Write-Host "Panasonic PCHub installation completed successfully: $($installedHub.DisplayVersion)" -ForegroundColor Green
-	Write-Host "Reboot required: $RebootRequired" -ForegroundColor Yellow
+	Write-PCHubLog -Message "Panasonic PCHub installation completed successfully: $($installedHub.DisplayVersion)"
+	Write-PCHubLog -Message "Reboot required: $RebootRequired"
 	exit 0
 }
 catch {
-	Write-Error "Failed to install Panasonic PCHub. $($_.Exception.Message)"
+	$errorMessage = "Failed to install Panasonic PC Hub. $($_.Exception.Message)"
+	try {
+		$logDirectory = Split-Path -Path $LogPath -Parent
+		if ($logDirectory) {
+			New-Item -Path $logDirectory -ItemType Directory -Force | Out-Null
+		}
+		Write-PCHubLog -Message $errorMessage -Level ERROR
+		Write-PCHubLog -Message (($_ | Out-String).Trim()) -Level ERROR
+	}
+	catch {
+		Write-Warning "Could not write to log file $LogPath. $($_.Exception.Message)"
+	}
+	Write-Warning "$errorMessage Log file: $LogPath"
 	exit 1
 }
 

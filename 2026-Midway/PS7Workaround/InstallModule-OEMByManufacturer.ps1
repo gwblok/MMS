@@ -7,7 +7,7 @@
     PSGallery into the Windows PowerShell 5.1 module path:
 
     Panasonic - PanasonicCommandUpdate
-    HP        - HPCMSL
+    HP        - HPCMSL and OEMWrapPS
     Lenovo    - Lenovo.Client.Update
     Dell      - OEMWrapPS
 
@@ -22,15 +22,15 @@
 $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
 $manufacturer = $computerSystem.Manufacturer
 
-$moduleName = switch -Regex ($manufacturer) {
-    'Panasonic' { 'PanasonicCommandUpdate'; break }
-    'HP|Hewlett-Packard' { 'HPCMSL'; break }
-    'Lenovo' { 'Lenovo.Client.Update'; break }
-    'Dell' { 'OEMWrapPS'; break }
-    default { $null }
+$moduleNames = switch -Regex ($manufacturer) {
+    'Panasonic' { @('PanasonicCommandUpdate'); break }
+    'HP|Hewlett-Packard' { @('HPCMSL', 'OEMWrapPS'); break }
+    'Lenovo' { @('Lenovo.Client.Update'); break }
+    'Dell' { @('OEMWrapPS'); break }
+    default { @() }
 }
 
-if (-not $moduleName) {
+if ($moduleNames.Count -eq 0) {
     Write-Error "Unsupported computer manufacturer: $manufacturer"
     exit 1
 }
@@ -48,14 +48,13 @@ if (-not (Test-Path -Path $pwshPath)) {
     exit 1
 }
 
-$acceptLicense = $moduleName -eq 'HPCMSL'
+$moduleNamesValue = $moduleNames -join ','
 $ps7Script = @'
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$moduleName = '__MODULE_NAME__'
+$moduleNames = '__MODULE_NAMES__' -split ','
 $manufacturer = '__MANUFACTURER__'
 $targetModulePath = Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules'
-$acceptLicense = __ACCEPT_LICENSE__
 
 try {
     New-Item -Path $targetModulePath -ItemType Directory -Force | Out-Null
@@ -70,20 +69,6 @@ try {
             Set-PSResourceRepository -Name PSGallery -Trusted
         }
 
-        $installedModule = Get-Module -ListAvailable -Name $moduleName |
-            Where-Object { $_.ModuleBase -like "$(Join-Path $targetModulePath $moduleName)*" } |
-            Sort-Object Version -Descending |
-            Select-Object -First 1
-
-        if (-not $installedModule) {
-            Write-Host "Installing $moduleName from PSGallery with PSResourceGet..." -ForegroundColor Cyan
-            if ($acceptLicense) {
-                Save-PSResource -Name $moduleName -Repository PSGallery -Path $targetModulePath -TrustRepository -AcceptLicense -Quiet
-            }
-            else {
-                Save-PSResource -Name $moduleName -Repository PSGallery -Path $targetModulePath -TrustRepository -Quiet
-            }
-        }
     }
     else {
         Import-Module PackageManagement -ErrorAction Stop
@@ -97,53 +82,64 @@ try {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
         }
 
+    }
+
+    foreach ($moduleName in $moduleNames) {
+        $acceptLicense = $moduleName -eq 'HPCMSL'
         $installedModule = Get-Module -ListAvailable -Name $moduleName |
             Where-Object { $_.ModuleBase -like "$(Join-Path $targetModulePath $moduleName)*" } |
             Sort-Object Version -Descending |
             Select-Object -First 1
 
         if (-not $installedModule) {
-            Write-Host "Installing $moduleName from PSGallery with PowerShellGet..." -ForegroundColor Cyan
-            if ($acceptLicense) {
+            Write-Host "Installing $moduleName from PSGallery..." -ForegroundColor Cyan
+            if (Get-Command Save-PSResource -ErrorAction SilentlyContinue) {
+                if ($acceptLicense) {
+                    Save-PSResource -Name $moduleName -Repository PSGallery -Path $targetModulePath -TrustRepository -AcceptLicense -Quiet
+                }
+                else {
+                    Save-PSResource -Name $moduleName -Repository PSGallery -Path $targetModulePath -TrustRepository -Quiet
+                }
+            }
+            elseif ($acceptLicense) {
                 Save-Module -Name $moduleName -Repository PSGallery -Path $targetModulePath -Force -AcceptLicense -Confirm:$false
             }
             else {
                 Save-Module -Name $moduleName -Repository PSGallery -Path $targetModulePath -Force -Confirm:$false
             }
+
+            $installedModule = Get-Module -ListAvailable -Name $moduleName |
+                Where-Object { $_.ModuleBase -like "$(Join-Path $targetModulePath $moduleName)*" } |
+                Sort-Object Version -Descending |
+                Select-Object -First 1
         }
-    }
+        if (-not $installedModule) {
+            throw "$moduleName was not found in $targetModulePath after installation."
+        }
 
-    $installedModule = Get-Module -ListAvailable -Name $moduleName |
-        Where-Object { $_.ModuleBase -like "$(Join-Path $targetModulePath $moduleName)*" } |
-        Sort-Object Version -Descending |
-        Select-Object -First 1
-    if (-not $installedModule) {
-        throw "The module was not found in $targetModulePath."
-    }
+        Import-Module -Name $installedModule.Path -Force
+        $loadedModule = Get-Module -Name $moduleName
+        if (-not $loadedModule) {
+            throw "$moduleName was installed but could not be loaded."
+        }
 
-    Import-Module -Name $installedModule.Path -Force
-    $loadedModule = Get-Module -Name $moduleName
-    if (-not $loadedModule) {
-        throw "The module was installed but could not be loaded."
+        Write-Host "$moduleName $($loadedModule.Version) loaded successfully for $manufacturer." -ForegroundColor Green
     }
-
-    Write-Host "$moduleName $($loadedModule.Version) loaded successfully for $manufacturer." -ForegroundColor Green
     exit 0
 }
 catch {
-    Write-Error "Failed to install or load $moduleName for $manufacturer. $($_.Exception.Message)"
+    Write-Error "Failed to install or load required module(s) for $manufacturer. $($_.Exception.Message)"
     exit 1
 }
 '@
-$ps7Script = $ps7Script.Replace('__MODULE_NAME__', $moduleName)
+$ps7Script = $ps7Script.Replace('__MODULE_NAMES__', $moduleNamesValue)
 $ps7Script = $ps7Script.Replace('__MANUFACTURER__', $manufacturer)
-$ps7Script = $ps7Script.Replace('__ACCEPT_LICENSE__', ('$' + $acceptLicense.ToString().ToLowerInvariant()))
 
 $childScriptPath = Join-Path 'C:\Windows\Temp' ("Install-OEMByManufacturer-PS7-{0}.ps1" -f [guid]::NewGuid())
 try {
     Set-Content -Path $childScriptPath -Value $ps7Script -Encoding UTF8 -Force
     Write-Host "Detected manufacturer: $manufacturer" -ForegroundColor Cyan
-    Write-Host "Selected module: $moduleName" -ForegroundColor Cyan
+    Write-Host "Selected modules: $($moduleNames -join ', ')" -ForegroundColor Cyan
     Write-Host "Handing installation to PowerShell 7: $pwshPath" -ForegroundColor Cyan
     & $pwshPath -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $childScriptPath
     $exitCode = $LASTEXITCODE

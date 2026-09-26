@@ -17,19 +17,18 @@ catch {
 }
 
 try {
-	$nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue |
-		Sort-Object Version -Descending |
-		Select-Object -First 1
-	if (-not $nugetProvider -or $nugetProvider.Version -lt [version]'2.8.5.201') {
-		Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope AllUsers -Force -Confirm:$false | Out-Null
+	$moduleRoot = 'C:\Program Files\WindowsPowerShell\Modules'
+	$modulesToImport = @('PackageManagement', 'PowerShellGet', $moduleName)
+	foreach ($requiredModule in $modulesToImport) {
+		$moduleManifest = Get-ChildItem -LiteralPath (Join-Path $moduleRoot $requiredModule) -Filter "$requiredModule.psd1" -File -Recurse -ErrorAction SilentlyContinue |
+			Sort-Object { try { [version]$_.Directory.Name } catch { [version]'0.0' } } -Descending |
+			Select-Object -First 1
+		if (-not $moduleManifest) {
+			throw "$requiredModule.psd1 was not found under $moduleRoot. Run the module installation steps before this BIOS update script."
+		}
+		Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+		Write-Host "Imported $requiredModule from $($moduleManifest.FullName)." -ForegroundColor Green
 	}
-	Import-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
-
-	Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
-	if (-not (Get-Module -ListAvailable -Name $moduleName)) {
-		Install-Module -Name $moduleName -Repository PSGallery -Scope AllUsers -Force -AcceptLicense -Confirm:$false
-	}
-	Import-Module -Name $moduleName -Force
 
 	Write-Host 'Installing applicable Panasonic BIOS updates...' -ForegroundColor Cyan
 	$installResult = Install-PanasonicUpdate -Category OnlyBios -AcceptLicense -Force -Verbose
