@@ -64,11 +64,11 @@ function Install-PackageManagement {
     if (-not $InstalledModule) {
         Write-Host -ForegroundColor DarkGray 'Install PackageManagement'
         $PackageManagementURL = "https://cdn.powershellgallery.com/packages/packagemanagement.1.4.8.1.nupkg"
-        Save-BootstrapPackage -Url $PackageManagementURL -Destination "$env:TEMP\packagemanagement.1.4.8.1.zip"
-        $null = New-Item -Path "$env:TEMP\1.4.8.1" -ItemType Directory -Force
-        Expand-Archive -Path "$env:TEMP\packagemanagement.1.4.8.1.zip" -DestinationPath "$env:TEMP\1.4.8.1"
+        Save-BootstrapPackage -Url $PackageManagementURL -Destination "C:\Windows\Temp\packagemanagement.1.4.8.1.zip"
+        $null = New-Item -Path "C:\Windows\Temp\1.4.8.1" -ItemType Directory -Force
+        Expand-Archive -Path "C:\Windows\Temp\packagemanagement.1.4.8.1.zip" -DestinationPath "C:\Windows\Temp\1.4.8.1"
         $null = New-Item -Path "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement" -ItemType Directory -ErrorAction SilentlyContinue
-        Move-Item -Path "$env:TEMP\1.4.8.1" -Destination "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement\1.4.8.1"
+        Move-Item -Path "C:\Windows\Temp\1.4.8.1" -Destination "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement\1.4.8.1"
         Import-Module PackageManagement -Force -Scope Global
     }
 }
@@ -81,11 +81,11 @@ function Install-PowerShellGet {
     if (-not (Get-Module -Name PowerShellGet -ListAvailable | Where-Object {$_.Version -ge '2.2.5'})) {
         Write-Host -ForegroundColor DarkGray 'Install PowerShellGet'
         $PowerShellGetURL = "https://www.powershellgallery.com/api/v2/package/PowerShellGet/2.2.5"
-        Save-BootstrapPackage -Url $PowerShellGetURL -Destination "$env:TEMP\powershellget.2.2.5.zip"
-        $null = New-Item -Path "$env:TEMP\2.2.5" -ItemType Directory -Force
-        Expand-Archive -Path "$env:TEMP\powershellget.2.2.5.zip" -DestinationPath "$env:TEMP\2.2.5"
+        Save-BootstrapPackage -Url $PowerShellGetURL -Destination "C:\Windows\Temp\powershellget.2.2.5.zip"
+        $null = New-Item -Path "C:\Windows\Temp\2.2.5" -ItemType Directory -Force
+        Expand-Archive -Path "C:\Windows\Temp\powershellget.2.2.5.zip" -DestinationPath "C:\Windows\Temp\2.2.5"
         $null = New-Item -Path "$env:ProgramFiles\WindowsPowerShell\Modules\PowerShellGet" -ItemType Directory -ErrorAction SilentlyContinue
-        Move-Item -Path "$env:TEMP\2.2.5" -Destination "$env:ProgramFiles\WindowsPowerShell\Modules\PowerShellGet\2.2.5"
+        Move-Item -Path "C:\Windows\Temp\2.2.5" -Destination "$env:ProgramFiles\WindowsPowerShell\Modules\PowerShellGet\2.2.5"
         Import-Module PowerShellGet -Force -Scope Global
     }
 }
@@ -99,7 +99,7 @@ Remove-Item "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement\*" -R
 #Setup LOCALAPPDATA Variable
 [System.Environment]::SetEnvironmentVariable('LOCALAPPDATA',"$env:SystemDrive\Windows\system32\config\systemprofile\AppData\Local")
 
-$WorkingDir = $env:TEMP
+$WorkingDir = "C:\Windows\Temp"
 
 Install-PackageManagement
 Install-PowerShellGet
