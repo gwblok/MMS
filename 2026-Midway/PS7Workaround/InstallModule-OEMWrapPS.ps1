@@ -87,7 +87,7 @@ catch {
 }
 '@
 
-$childScriptPath = Join-Path $env:TEMP ("Install-OEMWrapPS-PS7-{0}.ps1" -f [guid]::NewGuid())
+$childScriptPath = Join-Path 'C:\Windows\Temp' ("Install-OEMWrapPS-PS7-{0}.ps1" -f [guid]::NewGuid())
 try {
 	Set-Content -Path $childScriptPath -Value $ps7Script -Encoding UTF8 -Force
 	Write-Host "Handing OEMWrapPS installation to PowerShell 7: $pwshPath" -ForegroundColor Cyan

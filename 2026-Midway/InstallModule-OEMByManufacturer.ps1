@@ -99,5 +99,5 @@ try {
 }
 catch {
     Write-Error "Failed to install or load $moduleName for $manufacturer. $($_.Exception.Message)"
-    exit 1
+    #exit 1
 }

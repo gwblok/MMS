@@ -78,19 +78,19 @@ function Install-PackageManagement {
         if (-not $InstalledModule) {
             Write-Host -ForegroundColor Yellow "[-] Install PackageManagement 1.4.8.1"
             $PackageManagementURL = "https://psg-prod-eastus.azureedge.net/packages/packagemanagement.1.4.8.1.nupkg"
-            Invoke-WebRequest -UseBasicParsing -Uri $PackageManagementURL -OutFile "$env:TEMP\packagemanagement.1.4.8.1.zip"
-            $null = New-Item -Path "$env:TEMP\1.4.8.1" -ItemType Directory -Force
-            Expand-Archive -Path "$env:TEMP\packagemanagement.1.4.8.1.zip" -DestinationPath "$env:TEMP\1.4.8.1"
+            Invoke-WebRequest -UseBasicParsing -Uri $PackageManagementURL -OutFile "C:\Windows\Temp\packagemanagement.1.4.8.1.zip"
+            $null = New-Item -Path "C:\Windows\Temp\1.4.8.1" -ItemType Directory -Force
+            Expand-Archive -Path "C:\Windows\Temp\packagemanagement.1.4.8.1.zip" -DestinationPath "C:\Windows\Temp\1.4.8.1"
             $null = New-Item -Path "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement" -ItemType Directory -ErrorAction SilentlyContinue
-            Move-Item -Path "$env:TEMP\1.4.8.1" -Destination "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement\1.4.8.1"
+            Move-Item -Path "C:\Windows\Temp\1.4.8.1" -Destination "$env:ProgramFiles\WindowsPowerShell\Modules\PackageManagement\1.4.8.1"
             Import-Module PackageManagement -Force -Scope Global
         }
 
         if (-not (Get-Module -Name PowerShellGet -ListAvailable | Where-Object { $_.Version -ge '2.2.5' })) {
             Write-Host -ForegroundColor Yellow "[-] Install PowerShellGet 2.2.5 directly"
             $PowerShellGetURL = 'https://psg-prod-eastus.azureedge.net/packages/powershellget.2.2.5.nupkg'
-            $PowerShellGetZip = Join-Path $env:TEMP 'powershellget.2.2.5.zip'
-            $PowerShellGetExtract = Join-Path $env:TEMP 'PowerShellGet-2.2.5'
+            $PowerShellGetZip = Join-Path 'C:\Windows\Temp' 'powershellget.2.2.5.zip'
+            $PowerShellGetExtract = Join-Path 'C:\Windows\Temp' 'PowerShellGet-2.2.5'
             Invoke-WebRequest -UseBasicParsing -Uri $PowerShellGetURL -OutFile $PowerShellGetZip -ErrorAction Stop
             New-Item -Path $PowerShellGetExtract -ItemType Directory -Force | Out-Null
             Expand-Archive -Path $PowerShellGetZip -DestinationPath $PowerShellGetExtract -Force

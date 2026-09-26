@@ -139,7 +139,7 @@ $ps7Script = $ps7Script.Replace('__MODULE_NAME__', $moduleName)
 $ps7Script = $ps7Script.Replace('__MANUFACTURER__', $manufacturer)
 $ps7Script = $ps7Script.Replace('__ACCEPT_LICENSE__', ('$' + $acceptLicense.ToString().ToLowerInvariant()))
 
-$childScriptPath = Join-Path $env:TEMP ("Install-OEMByManufacturer-PS7-{0}.ps1" -f [guid]::NewGuid())
+$childScriptPath = Join-Path 'C:\Windows\Temp' ("Install-OEMByManufacturer-PS7-{0}.ps1" -f [guid]::NewGuid())
 try {
     Set-Content -Path $childScriptPath -Value $ps7Script -Encoding UTF8 -Force
     Write-Host "Detected manufacturer: $manufacturer" -ForegroundColor Cyan
