@@ -30,7 +30,27 @@ if (-not $moduleName) {
     throw "Unsupported computer manufacturer: $manufacturer"
 }
 
+function Initialize-PSGallery {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    Import-Module -Name PackageManagement -ErrorAction Stop
+    Import-Module -Name PowerShellGet -ErrorAction Stop
+
+    $repository = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
+    if (-not $repository) {
+        Write-Host 'Registering the default PowerShell Gallery repository...' -ForegroundColor Cyan
+        Register-PSRepository -Default -ErrorAction Stop
+        $repository = Get-PSRepository -Name PSGallery -ErrorAction Stop
+    }
+
+    if ($repository.InstallationPolicy -ne 'Trusted') {
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
+    }
+}
+
 try {
+    Initialize-PSGallery
+
     $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue |
         Sort-Object Version -Descending |
         Select-Object -First 1
@@ -41,10 +61,6 @@ try {
     }
 
     Import-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -ErrorAction Stop | Out-Null
-    $repository = Get-PSRepository -Name PSGallery -ErrorAction Stop
-    if ($repository.InstallationPolicy -ne 'Trusted') {
-        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
-    }
 
     $installedModule = Get-Module -ListAvailable -Name $moduleName |
         Sort-Object Version -Descending |

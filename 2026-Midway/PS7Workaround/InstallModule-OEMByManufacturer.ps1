@@ -51,16 +51,21 @@ if (-not (Test-Path -Path $pwshPath)) {
 $acceptLicense = $moduleName -eq 'HPCMSL'
 $ps7Script = @'
 $ErrorActionPreference = 'Stop'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $moduleName = '__MODULE_NAME__'
 $manufacturer = '__MANUFACTURER__'
 $targetModulePath = Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules'
 $acceptLicense = __ACCEPT_LICENSE__
 
 try {
-    New-Item -Path `$targetModulePath -ItemType Directory -Force | Out-Null
+    New-Item -Path $targetModulePath -ItemType Directory -Force | Out-Null
 
     if (Get-Command Save-PSResource -ErrorAction SilentlyContinue) {
-        $repository = Get-PSResourceRepository -Name PSGallery -ErrorAction Stop
+        $repository = Get-PSResourceRepository -Name PSGallery -ErrorAction SilentlyContinue
+        if (-not $repository) {
+            Register-PSResourceRepository -PSGallery -ErrorAction Stop
+            $repository = Get-PSResourceRepository -Name PSGallery -ErrorAction Stop
+        }
         if (-not $repository.Trusted) {
             Set-PSResourceRepository -Name PSGallery -Trusted
         }
@@ -81,9 +86,15 @@ try {
         }
     }
     else {
-        $gallery = Get-PSRepository -Name PSGallery -ErrorAction Stop
+        Import-Module PackageManagement -ErrorAction Stop
+        Import-Module PowerShellGet -ErrorAction Stop
+        $gallery = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
+        if (-not $gallery) {
+            Register-PSRepository -Default -ErrorAction Stop
+            $gallery = Get-PSRepository -Name PSGallery -ErrorAction Stop
+        }
         if ($gallery.InstallationPolicy -ne 'Trusted') {
-            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
         }
 
         $installedModule = Get-Module -ListAvailable -Name $moduleName |
@@ -126,7 +137,7 @@ catch {
 '@
 $ps7Script = $ps7Script.Replace('__MODULE_NAME__', $moduleName)
 $ps7Script = $ps7Script.Replace('__MANUFACTURER__', $manufacturer)
-$ps7Script = $ps7Script.Replace('__ACCEPT_LICENSE__', $acceptLicense.ToString().ToLowerInvariant())
+$ps7Script = $ps7Script.Replace('__ACCEPT_LICENSE__', ('$' + $acceptLicense.ToString().ToLowerInvariant()))
 
 $childScriptPath = Join-Path $env:TEMP ("Install-OEMByManufacturer-PS7-{0}.ps1" -f [guid]::NewGuid())
 try {
