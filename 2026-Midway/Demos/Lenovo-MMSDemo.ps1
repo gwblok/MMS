@@ -1,28 +1,11 @@
 #Load Lenovo EMPS
 Clear-Host
 
-Write-Host "Lets see what Lenovo has available: Find-Module -Name Lenovo.*" -ForegroundColor Green
-Write-Host "Press any key to continue..." -ForegroundColor Green
-Read-Host
-Find-Module -Name Lenovo.*
 
-Write-Host "Press any key to continue..." -ForegroundColor Green
-Read-Host
-Write-Host "Lets grab the Update Module and run a Scan [Install-Module Lenovo.Client.Update]"
-Install-module -Name Lenovo.Client.Update
-Write-Host "Module Lenovo.Client.Update installed." -ForegroundColor Green
-Write-Host "Lets run a scan with the Update Module (Get-LnvUpdate)" -ForegroundColor Green
-Get-LnvUpdate
-Write-Host "Press any key to continue..." -ForegroundColor Green
-Read-Host
-Write-Host "Loading Lenovo EMPS module..." -ForegroundColor Green
-Write-Host 'iex (irm lenovo.garytown.com)' -ForegroundColor Cyan
-
-iex (irm lenovo.garytown.com)
 
 Write-Host "Import the Lenovo Module..." -ForegroundColor Green
-Write-Host 'Import-ModuleLenovoCSM' -ForegroundColor Cyan
-Import-ModuleLenovoCSM
+Write-Host 'Import-Module Lenovo.Client.Scripting' -ForegroundColor Cyan
+Install-Module 'Lenovo.Client.Scripting' -scope AllUsers -Force
 Write-Host ""
 #Pause The Script 
 Write-Host "Press any key to continue..." -ForegroundColor Green
@@ -114,19 +97,5 @@ Write-Host ""
 Write-Host "Find-LnvDriverPack | " -ForegroundColor Green -NoNewline; Write-Host "Find-LnvDriverPack -MachineType (Get-LnvMachineType) -Latest" -ForegroundColor Cyan
 Find-LnvDriverPack -MachineType (Get-LnvMachineType) -Latest
 Write-Host ""
-Write-Host '$LatestDriverPack = Find-LnvDriverPack -MachineType (Get-LnvMachineType) -Latest' -ForegroundColor Yellow
-$LatestDriverPack = Find-LnvDriverPack -MachineType (Get-LnvMachineType) -Latest
 
-Write-Host ""
-Read-Host
-
-Write-Host "Get-LnvDriverPack" -ForegroundColor Green 
-Write-Host 'Get-LnvDriverPack -MachineType (Get-LnvMachineType) -WindowsVersion ($LatestDriverPack.os.Replace("win","")) -OSBuildVersion $LatestDriverPack.version  -DownloadPath c:\drivers' -ForegroundColor Cyan
-Read-Host
-Get-LnvDriverPack -MachineType (Get-LnvMachineType) -WindowsVersion ($LatestDriverPack.os.Replace("win","")) -OSBuildVersion $LatestDriverPack.version -DownloadPath c:\drivers
-
-
-Write-Host ""
-Read-Host
-Write-Host "Now time to Demo the Lenovo Vantage Install and Settings" -ForegroundColor Magenta
-
+Write-Host "Now to show the Install-LVC scripts for Lenovo Commercial Vantage" -ForegroundColor Green
