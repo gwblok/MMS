@@ -1,4 +1,6 @@
 
+#Clear Branch Cache
+Clear-BCCache -Force
 
 
 #Delete's System's Boot Folder, reboots to PXE
