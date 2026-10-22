@@ -8,10 +8,6 @@ https://www.powershellgallery.com/packages/OEMWrapPS
 #Load Dell EMPS
 Clear-Host
 
-Write-Host "Loading Dell EMPS module..." -ForegroundColor Green
-Write-Host 'iex (irm dell.garytown.com)' -ForegroundColor Cyan
-
-iex (irm dell.garytown.com)
 
 #Basics (To use on a different Model (Platform), use the -Platform parameter and product code for that platfrom
 Write-Host -ForegroundColor Magenta "Building Demos ver 25.4.21.12.39..... please wait...."
