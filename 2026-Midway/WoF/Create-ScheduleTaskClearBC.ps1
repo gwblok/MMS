@@ -19,12 +19,6 @@ param(
     [int]$MaxAttempts = 10
 )
 
-#Disable Windows Firewall
-Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
-
-#Set network connection profiles to Private
-Get-NetConnectionProfile | Set-NetConnectionProfile -NetworkCategory Private
-
 $ErrorActionPreference = 'Stop'
 
 # Script executed by the scheduled task
